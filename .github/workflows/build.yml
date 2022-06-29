@@ -1,0 +1,63 @@
+name: build gcc
+
+on:
+  push:
+    branches:
+      - main
+      - riscv-gcc-*
+env:
+  URL_PACKAGE: https://github.com/katsuster
+  VER_BINUTILS: 2.38-1
+  VER_NEWLIB: 4.1.0-1
+  VER_GCC: 12.0.1
+  DIR_SRC: .src
+  DIR_PACKAGE: .pkg
+
+jobs:
+  debian_stage1:
+    runs-on: ubuntu-20.04
+    env:
+      PKG_TARGET: ubuntu20
+      SECT: release
+    steps:
+      - name: "clone"
+        uses: actions/checkout@v2
+      - name: "prereq stage1"
+        run: |
+          ./pkg_script/ubuntu_setup.sh
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.VER_BINUTILS }}/riscv64-binutils_${{ env.VER_BINUTILS }}_amd64.deb > riscv64-binutils.deb
+          sudo dpkg -i riscv64-binutils.deb
+      - name: "package stage1"
+        run: |
+          DEBIAN=debian_stage1 PROJ=riscv64-gcc-stage1 PROJ_ORG=riscv-gcc VER=${{ env.VER_GCC }} \
+            ./pkg_script/ubuntu_package.sh
+      - name: "upload stage1"
+        uses: actions/upload-artifact@v2
+        with:
+          name: gcc-stage1.deb
+          path: pkg_${{ env.PKG_TARGET }}/riscv64-gcc*
+
+  debian_stage2:
+    runs-on: ubuntu-20.04
+    env:
+      PKG_TARGET: ubuntu20
+      SECT: release
+    steps:
+      - name: "clone"
+        uses: actions/checkout@v2
+      - name: "prereq stage2"
+        run: |
+          ./pkg_script/ubuntu_setup.sh
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.VER_BINUTILS }}/riscv64-binutils_${{ env.VER_BINUTILS }}_amd64.deb > riscv64-binutils.deb
+          curl -L ${{ env.URL_PACKAGE }}/newlib-cygwin/releases/download/riscv-newlib-${{ env.VER_NEWLIB }}/riscv64-newlib_${{ env.VER_NEWLIB }}_amd64.deb > riscv64-newlib.deb
+          sudo dpkg -i riscv64-binutils.deb
+          sudo dpkg -i riscv64-newlib.deb
+      - name: "package stage2"
+        run: |
+          DEBIAN=debian_stage2 PROJ=riscv64-gcc-stage2 PROJ_ORG=riscv-gcc VER=${{ env.VER_GCC }} \
+            ./pkg_script/ubuntu_package.sh
+      - name: "upload stage2"
+        uses: actions/upload-artifact@v2
+        with:
+          name: gcc-stage2.deb
+          path: pkg_${{ env.PKG_TARGET }}/riscv64-gcc*
