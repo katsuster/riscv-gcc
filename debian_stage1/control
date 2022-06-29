@@ -1,0 +1,13 @@
+Source: riscv64-gcc-stage1
+Section: devel
+Priority: optional
+Maintainer: Katsuhiro Suzuki <katsuster@katsuster.net>
+Standards-Version: 3.9.7
+Build-Depends: debhelper (>= 9)
+
+Package: riscv64-gcc-stage1
+Architecture: amd64
+Conflicts: riscv64-gcc
+Depends: riscv64-binutils, ${shlibs:Depends}, ${misc:Depends}
+Description: GNU compiler collection for RISC-V processors
+ Bare metal compiler for embedded RISC-V chips.

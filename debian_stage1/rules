@@ -1,0 +1,55 @@
+#!/usr/bin/make -f
+
+%:
+	PATH=$(PREFIX)/bin:$(PATH) \
+	    dh $@
+
+build_dir = build
+
+DH_FLAGS = -B$(build_dir)
+PACKAGE = riscv64-gcc-stage1
+PREFIX = /opt/riscv
+
+PWD := $(shell pwd)
+PKGVER := $(shell head -1 PKGVERSION)
+
+override_dh_auto_configure:
+	dh_auto_configure $(DH_FLAGS) -- \
+	  --target=riscv64-unknown-elf \
+	  --prefix=$(PREFIX) \
+	  --infodir=$(PREFIX)/share/doc/$(PACKAGE)/info \
+	  --htmldir=$(PREFIX)/share/doc/$(PACKAGE)/html \
+	  --pdfdir=$(PREFIX)/share/doc/$(PACKAGE)/pdf \
+	  --disable-libatomic \
+	  --disable-libgomp \
+	  --disable-libmudflap \
+	  --disable-libquadmath \
+	  --disable-libssp \
+	  --disable-nls \
+	  --disable-shared \
+	  --disable-threads \
+	  --enable-checking=yes \
+	  --enable-languages=c \
+	  --enable-multilib \
+	  --enable-tls \
+	  --with-abi=lp64d \
+	  --with-arch=rv64gc \
+	  --with-native-system-header-dir=/include \
+	  --with-newlib \
+	  --with-pkgversion="$(PKGVER)" \
+	  --with-system-zlib \
+	  --with-sysroot=$(PREFIX)/riscv64-unknown-elf \
+	  CFLAGS_FOR_TARGET="-Os -mcmodel=medany" \
+	  CXXFLAGS_FOR_TARGET="-Os -mcmodel=medany"
+
+override_dh_auto_build:
+	dh_auto_build $(DH_FLAGS) --parallel -- all-gcc
+
+# Ignore tests
+override_dh_auto_test:
+
+override_dh_auto_install:
+	$(MAKE) -C $(build_dir) DESTDIR=$(PWD)/debian/$(PACKAGE) install-gcc
+
+override_dh_strip:
+	dh_strip -X.a -X.o

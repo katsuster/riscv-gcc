@@ -1,0 +1,24 @@
+This document describes how to make debian packages by manually.
+
+
+# Create gcc-stage1 package
+
+PKG_TARGET=ubuntu20 \
+SECT=release \
+DEBIAN=debian_stage1 \
+PROJ=riscv64-gcc-stage1 \
+VER=12.0.1-rvv \
+  ./pkg_script/ubuntu_package.sh
+
+# Create gcc package
+
+PKG_TARGET=ubuntu20 \
+SECT=release \
+DEBIAN=debian_stage2 \
+PROJ=riscv64-gcc \
+VER=12.0.1-rvv \
+  ./pkg_script/ubuntu_package.sh
+
+
+Debian package and related files are generated on pkg_${PKG_TARGET}/
+(ex. pkg_ubuntu20) directory.
