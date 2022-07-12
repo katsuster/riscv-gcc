@@ -6,20 +6,35 @@
 
 build_dir = build
 
-DH_FLAGS = -B$(build_dir)
-PACKAGE = riscv64-gcc-stage1
 PREFIX = /opt/riscv
 
 PWD := $(shell pwd)
 PKGVER := $(shell head -1 PKGVERSION)
 
-override_dh_auto_configure:
-	dh_auto_configure $(DH_FLAGS) -- \
-	  --target=riscv64-unknown-elf \
+OPTS_GCC = \
+	--target=riscv64-unknown-elf \
+	--enable-multilib \
+	--with-abi=lp64d \
+	--with-arch=rv64gc \
+	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
+
+OPTS_LINUX_GCC = \
+	--target=riscv64-unknown-linux-gnu \
+	--disable-multilib \
+	--with-abi=lp64d \
+	--with-arch=rv64gcv \
+	--with-sysroot=$(PREFIX)/sysroot
+
+define configure_macro
+	$(eval PROJ = $(1))
+	$(eval OPTS = $(2))
+	mkdir -p $(build_dir)_$(PROJ) && \
+	cd $(build_dir)_$(PROJ) && \
+	../configure \
 	  --prefix=$(PREFIX) \
-	  --infodir=$(PREFIX)/share/doc/$(PACKAGE)/info \
-	  --htmldir=$(PREFIX)/share/doc/$(PACKAGE)/html \
-	  --pdfdir=$(PREFIX)/share/doc/$(PACKAGE)/pdf \
+	  --infodir=$(PREFIX)/share/doc/$(PROJ)/info \
+	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
+	  --pdfdir=$(PREFIX)/share/doc/$(PROJ)/pdf \
 	  --disable-libatomic \
 	  --disable-libgomp \
 	  --disable-libmudflap \
@@ -30,26 +45,44 @@ override_dh_auto_configure:
 	  --disable-threads \
 	  --enable-checking=yes \
 	  --enable-languages=c \
-	  --enable-multilib \
 	  --enable-tls \
-	  --with-abi=lp64d \
-	  --with-arch=rv64gc \
-	  --with-native-system-header-dir=/include \
 	  --with-newlib \
 	  --with-pkgversion="$(PKGVER)" \
 	  --with-system-zlib \
-	  --with-sysroot=$(PREFIX)/riscv64-unknown-elf \
+	  $(OPTS) \
 	  CFLAGS_FOR_TARGET="-Os -mcmodel=medany" \
 	  CXXFLAGS_FOR_TARGET="-Os -mcmodel=medany"
+endef
+
+define build_macro
+	$(eval PROJ = $(1))
+	dh_auto_build -B$(build_dir)_$(PROJ) --parallel -- all-gcc
+	dh_auto_build -B$(build_dir)_$(PROJ) --parallel -- all-target-libgcc
+endef
+
+define install_macro
+	$(eval PROJ = $(1))
+	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(PWD)/debian/$(PROJ) install-gcc
+	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(PWD)/debian/$(PROJ) install-target-libgcc
+	# gcc-doc-base provides man7
+	rm -rf \
+	  $(PWD)/debian/$(PROJ)/$(PREFIX)/share/man/man7
+endef
+
+override_dh_auto_configure:
+	$(call configure_macro,riscv64-gcc-stage1,$(OPTS_GCC))
+	$(call configure_macro,riscv64-linux-gcc-stage1,$(OPTS_LINUX_GCC))
 
 override_dh_auto_build:
-	dh_auto_build $(DH_FLAGS) --parallel -- all-gcc
+	$(call build_macro,riscv64-gcc-stage1)
+	$(call build_macro,riscv64-linux-gcc-stage1)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
-	$(MAKE) -C $(build_dir) DESTDIR=$(PWD)/debian/$(PACKAGE) install-gcc
+	$(call install_macro,riscv64-gcc-stage1)
+	$(call install_macro,riscv64-linux-gcc-stage1)
 
 override_dh_strip:
 	dh_strip -X.a -X.o

@@ -6,50 +6,103 @@
 
 build_dir = build
 
-DH_FLAGS = -B$(build_dir)
-PACKAGE = riscv64-gcc
 PREFIX = /opt/riscv
 
 PWD := $(shell pwd)
 PKGVER := $(shell head -1 PKGVERSION)
 
-override_dh_auto_configure:
-	dh_auto_configure $(DH_FLAGS) -- \
-	  --target=riscv64-unknown-elf \
+OPTS_GCC = \
+	--target=riscv64-unknown-elf \
+	--enable-multilib \
+	--disable-shared \
+	--disable-threads \
+	--with-abi=lp64d \
+	--with-arch=rv64gcv \
+	--with-native-system-header-dir=/include \
+	--with-newlib \
+	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
+
+OPTS_LINUX_GCC = \
+	--target=riscv64-unknown-linux-gnu \
+	--disable-multilib \
+	--enable-shared \
+	--enable-threads \
+	--with-abi=lp64d \
+	--with-arch=rv64gcv \
+	--with-sysroot=$(PREFIX)/sysroot
+
+define configure_macro
+	$(eval PROJ = $(1))
+	$(eval OPTS = $(2))
+	mkdir -p $(build_dir)_$(PROJ) && \
+	cd $(build_dir)_$(PROJ) && \
+	../configure \
 	  --prefix=$(PREFIX) \
-	  --infodir=$(PREFIX)/share/doc/$(PACKAGE)/info \
-	  --htmldir=$(PREFIX)/share/doc/$(PACKAGE)/html \
-	  --pdfdir=$(PREFIX)/share/doc/$(PACKAGE)/pdf \
+	  --infodir=$(PREFIX)/share/doc/$(PROJ)/info \
+	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
+	  --pdfdir=$(PREFIX)/share/doc/$(PROJ)/pdf \
+	  --enable-checking=yes \
+	  --enable-languages=c,c++ \
 	  --disable-libatomic \
 	  --disable-libgomp \
 	  --disable-libmudflap \
 	  --disable-libquadmath \
+	  --disable-libsanitizer \
 	  --disable-libssp \
 	  --disable-nls \
-	  --disable-shared \
-	  --disable-threads \
-	  --enable-checking=yes \
-	  --enable-languages=c,c++ \
-	  --enable-multilib \
 	  --enable-tls \
-	  --with-abi=lp64d \
-	  --with-arch=rv64gc \
-	  --with-native-system-header-dir=/include \
-	  --with-newlib \
 	  --with-pkgversion="$(PKGVER)" \
-	  --with-system-zlib \
-	  --with-sysroot=$(PREFIX)/riscv64-unknown-elf \
+	  --with-python-dir=share/$(PROJ) \
+	  $(OPTS) \
 	  CFLAGS_FOR_TARGET="-O2 -mcmodel=medany" \
 	  CXXFLAGS_FOR_TARGET="-O2 -mcmodel=medany"
+endef
+
+define build_macro
+	$(eval PROJ = $(1))
+	dh_auto_build -B$(build_dir)_$(PROJ) --parallel all
+endef
+
+define install_macro
+	$(eval PROJ = $(1))
+	$(eval DEST = $(PWD)/debian/$(PROJ))
+	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(DEST) install
+	# move libcc1.so
+	mkdir -p $(DEST)/$(PREFIX)/lib/gcc-cross/$(PROJ)/
+	mv $(DEST)/$(PREFIX)/lib/libcc1.* \
+	  $(DEST)/$(PREFIX)/lib/gcc-cross/$(PROJ)/
+	# remove *.la
+	find $(DEST)/ -name '*.la' -delete
+	# gcc-doc-base provides man7
+	rm -rf \
+	  $(DEST)/$(PREFIX)/share/man/man7
+endef
+
+define shlibdeps_macro
+	$(eval PROJ = $(1))
+	$(eval DEST = $(PWD)/debian/$(PROJ))
+	$(eval SDIR = $(DEST)/$(PREFIX)/riscv64-unknown-linux-gnu)
+	$(eval SYSROOT = $(PREFIX)/sysroot)
+	dh_shlibdeps -l$(SDIR)/lib:$(SYSROOT)/lib:$(SYSROOT)/lib64/lp64d
+endef
+
+override_dh_auto_configure:
+	$(call configure_macro,riscv64-gcc,$(OPTS_GCC))
+	$(call configure_macro,riscv64-linux-gcc,$(OPTS_LINUX_GCC))
 
 override_dh_auto_build:
-	dh_auto_build $(DH_FLAGS) --parallel -- all
+	$(call build_macro,riscv64-gcc)
+	$(call build_macro,riscv64-linux-gcc)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
-	$(MAKE) -C $(build_dir) DESTDIR=$(PWD)/debian/$(PACKAGE) install
+	$(call install_macro,riscv64-gcc)
+	$(call install_macro,riscv64-linux-gcc)
 
 override_dh_strip:
-	dh_strip -X.a -X.o
+	dh_strip -X.a -X.o -X.so
+
+override_dh_shlibdeps:
+	$(call shlibdeps_macro,riscv64-linux-gcc)

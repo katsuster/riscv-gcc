@@ -63,6 +63,7 @@ tar xf ../../${ARCH}
 #rmdir ${PROJ_ORG}-${VER}
 
 # Copy debian, libs, remove CI files
+rm -rf ./debian
 cp -a ../../${DEBIAN} ./debian
 cp -a ../../gmp-${VER_GMP}   ./
 cp -a ../../mpfr-${VER_MPFR} ./

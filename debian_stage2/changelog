@@ -1,4 +1,11 @@
-riscv64-gcc (12.0.1-1) stable; urgency=medium
+riscv64-gcc (12.0.1-rvv-2) stable; urgency=medium
+
+  * gcc-12.0.1
+  * Add linux toolchain
+
+ -- Katsuhiro Suzuki <katsuster@katsuster.net>  Fri, 8 Jul 2022 00:00:00 +0000
+
+riscv64-gcc (12.0.1-rvv-1) stable; urgency=medium
 
   * gcc-12.0.1
 
