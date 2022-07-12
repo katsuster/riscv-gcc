@@ -7,9 +7,11 @@ on:
       - riscv-gcc-*
 env:
   URL_PACKAGE: https://github.com/katsuster
-  VER_BINUTILS: 2.38-1
-  VER_NEWLIB: 4.1.0-1
-  VER_GCC: 12.0.1
+  DEB_BINUTILS: 2.38-2
+  DEB_NEWLIB: 4.1.0-1
+  DEB_LINUX: 5.10.0-2
+  DEB_GLIBC: 2.35-2
+  VER_GCC: 12.0.1-rvv
   DIR_SRC: .src
   DIR_PACKAGE: .pkg
 
@@ -25,8 +27,10 @@ jobs:
       - name: "prereq stage1"
         run: |
           ./pkg_script/ubuntu_setup.sh
-          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.VER_BINUTILS }}/riscv64-binutils_${{ env.VER_BINUTILS }}_amd64.deb > riscv64-binutils.deb
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.DEB_BINUTILS }}/riscv64-binutils_${{ env.DEB_BINUTILS }}_amd64.deb > riscv64-binutils.deb
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.DEB_BINUTILS }}/riscv64-linux-binutils_${{ env.DEB_BINUTILS }}_amd64.deb > riscv64-linux-binutils.deb
           sudo dpkg -i riscv64-binutils.deb
+          sudo dpkg -i riscv64-linux-binutils.deb
       - name: "package stage1"
         run: |
           DEBIAN=debian_stage1 PROJ=riscv64-gcc-stage1 PROJ_ORG=riscv-gcc VER=${{ env.VER_GCC }} \
@@ -35,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: gcc-stage1.deb
-          path: pkg_${{ env.PKG_TARGET }}/riscv64-gcc*
+          path: pkg_${{ env.PKG_TARGET }}/riscv64-*
 
   debian_stage2:
     runs-on: ubuntu-20.04
@@ -48,10 +52,16 @@ jobs:
       - name: "prereq stage2"
         run: |
           ./pkg_script/ubuntu_setup.sh
-          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.VER_BINUTILS }}/riscv64-binutils_${{ env.VER_BINUTILS }}_amd64.deb > riscv64-binutils.deb
-          curl -L ${{ env.URL_PACKAGE }}/newlib-cygwin/releases/download/riscv-newlib-${{ env.VER_NEWLIB }}/riscv64-newlib_${{ env.VER_NEWLIB }}_amd64.deb > riscv64-newlib.deb
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.DEB_BINUTILS }}/riscv64-binutils_${{ env.DEB_BINUTILS }}_amd64.deb > riscv64-binutils.deb
+          curl -L ${{ env.URL_PACKAGE }}/riscv-binutils-gdb/releases/download/riscv-binutils-${{ env.DEB_BINUTILS }}/riscv64-linux-binutils_${{ env.DEB_BINUTILS }}_amd64.deb > riscv64-linux-binutils.deb
+          curl -L ${{ env.URL_PACKAGE }}/newlib-cygwin/releases/download/riscv-newlib-${{ env.DEB_NEWLIB }}/riscv64-newlib_${{ env.DEB_NEWLIB }}_amd64.deb > riscv64-newlib.deb
+          curl -L ${{ env.URL_PACKAGE }}/linux-headers/releases/download/riscv-linux-headers-${{ env.DEB_LINUX }}/riscv64-linux-headers_${{ env.DEB_LINUX }}_amd64.deb > riscv64-linux-headers.deb
+          curl -L ${{ env.URL_PACKAGE }}/glibc/releases/download/riscv-glibc-${{ env.DEB_GLIBC }}/riscv64-linux-glibc_${{ env.DEB_GLIBC }}_amd64.deb > riscv64-linux-glibc.deb
           sudo dpkg -i riscv64-binutils.deb
           sudo dpkg -i riscv64-newlib.deb
+          sudo dpkg -i riscv64-linux-binutils.deb
+          sudo dpkg -i riscv64-linux-headers.deb
+          sudo dpkg -i riscv64-linux-glibc.deb
       - name: "package stage2"
         run: |
           DEBIAN=debian_stage2 PROJ=riscv64-gcc-stage2 PROJ_ORG=riscv-gcc VER=${{ env.VER_GCC }} \
@@ -60,4 +70,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: gcc-stage2.deb
-          path: pkg_${{ env.PKG_TARGET }}/riscv64-gcc*
+          path: pkg_${{ env.PKG_TARGET }}/riscv64-*
