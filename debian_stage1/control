@@ -12,8 +12,14 @@ Depends: riscv64-binutils, ${shlibs:Depends}, ${misc:Depends}
 Description: GNU compiler collection for RISC-V processors
  Bare metal compiler for embedded RISC-V chips.
 
-Package: riscv64-linux-gcc-stage1
+Package: riscv64-linux-glibc-gcc-stage1
 Architecture: amd64
-Conflicts: riscv64-linux-gcc
-Depends: riscv64-linux-binutils, ${shlibs:Depends}, ${misc:Depends}
+Conflicts: riscv64-linux-glibc-gcc
+Depends: riscv64-linux-glibc-binutils, ${shlibs:Depends}, ${misc:Depends}
+Description: GNU compiler collection for RISC-V processors
+
+Package: riscv64-linux-musl-gcc-stage1
+Architecture: amd64
+Conflicts: riscv64-linux-musl-gcc
+Depends: riscv64-linux-musl-binutils, ${shlibs:Depends}, ${misc:Depends}
 Description: GNU compiler collection for RISC-V processors

@@ -13,16 +13,14 @@ PKGVER := $(shell head -1 PKGVERSION)
 
 OPTS_GCC = \
 	--target=riscv64-unknown-elf \
-	--enable-multilib \
-	--with-abi=lp64d \
-	--with-arch=rv64gc \
 	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
 
-OPTS_LINUX_GCC = \
+OPTS_GLIBC_GCC = \
 	--target=riscv64-unknown-linux-gnu \
-	--disable-multilib \
-	--with-abi=lp64d \
-	--with-arch=rv64gcv \
+	--with-sysroot=$(PREFIX)/sysroot
+
+OPTS_MUSL_GCC = \
+	--target=riscv64-unknown-linux-musl \
 	--with-sysroot=$(PREFIX)/sysroot
 
 define configure_macro
@@ -35,16 +33,17 @@ define configure_macro
 	  --infodir=$(PREFIX)/share/doc/$(PROJ)/info \
 	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
 	  --pdfdir=$(PREFIX)/share/doc/$(PROJ)/pdf \
+	  --enable-checking=yes \
+	  --enable-languages=c \
 	  --disable-libatomic \
 	  --disable-libgomp \
 	  --disable-libmudflap \
 	  --disable-libquadmath \
 	  --disable-libssp \
+	  --enable-multilib \
 	  --disable-nls \
 	  --disable-shared \
 	  --disable-threads \
-	  --enable-checking=yes \
-	  --enable-languages=c \
 	  --enable-tls \
 	  --with-newlib \
 	  --with-pkgversion="$(PKGVER)" \
@@ -71,18 +70,21 @@ endef
 
 override_dh_auto_configure:
 	$(call configure_macro,riscv64-gcc-stage1,$(OPTS_GCC))
-	$(call configure_macro,riscv64-linux-gcc-stage1,$(OPTS_LINUX_GCC))
+	$(call configure_macro,riscv64-linux-glibc-gcc-stage1,$(OPTS_GLIBC_GCC))
+	$(call configure_macro,riscv64-linux-musl-gcc-stage1,$(OPTS_MUSL_GCC))
 
 override_dh_auto_build:
 	$(call build_macro,riscv64-gcc-stage1)
-	$(call build_macro,riscv64-linux-gcc-stage1)
+	$(call build_macro,riscv64-linux-glibc-gcc-stage1)
+	$(call build_macro,riscv64-linux-musl-gcc-stage1)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
 	$(call install_macro,riscv64-gcc-stage1)
-	$(call install_macro,riscv64-linux-gcc-stage1)
+	$(call install_macro,riscv64-linux-glibc-gcc-stage1)
+	$(call install_macro,riscv64-linux-musl-gcc-stage1)
 
 override_dh_strip:
 	dh_strip -X.a -X.o
