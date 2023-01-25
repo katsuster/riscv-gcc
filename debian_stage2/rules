@@ -16,19 +16,22 @@ OPTS_GCC = \
 	--enable-multilib \
 	--disable-shared \
 	--disable-threads \
-	--with-abi=lp64d \
-	--with-arch=rv64gcv \
 	--with-native-system-header-dir=/include \
 	--with-newlib \
 	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
 
-OPTS_LINUX_GCC = \
+OPTS_GLIBC_GCC = \
 	--target=riscv64-unknown-linux-gnu \
+	--enable-multilib \
+	--enable-shared \
+	--enable-threads \
+	--with-sysroot=$(PREFIX)/sysroot
+
+OPTS_MUSL_GCC = \
+	--target=riscv64-unknown-linux-musl \
 	--disable-multilib \
 	--enable-shared \
 	--enable-threads \
-	--with-abi=lp64d \
-	--with-arch=rv64gcv \
 	--with-sysroot=$(PREFIX)/sysroot
 
 define configure_macro
@@ -49,7 +52,7 @@ define configure_macro
 	  --disable-libquadmath \
 	  --disable-libsanitizer \
 	  --disable-libssp \
-	  --disable-nls \
+	  --enable-nls \
 	  --enable-tls \
 	  --with-pkgversion="$(PKGVER)" \
 	  --with-python-dir=share/$(PROJ) \
@@ -74,35 +77,41 @@ define install_macro
 	# remove *.la
 	find $(DEST)/ -name '*.la' -delete
 	# gcc-doc-base provides man7
+	# gcc-N-locales provides locales
 	rm -rf \
-	  $(DEST)/$(PREFIX)/share/man/man7
+	  $(DEST)/$(PREFIX)/share/man/man7 \
+	  $(DEST)/$(PREFIX)/share/locale
 endef
 
 define shlibdeps_macro
 	$(eval PROJ = $(1))
 	$(eval DEST = $(PWD)/debian/$(PROJ))
-	$(eval SDIR = $(DEST)/$(PREFIX)/riscv64-unknown-linux-gnu)
+	$(eval SDIR = $(DEST)/$(PREFIX)/$(2))
 	$(eval SYSROOT = $(PREFIX)/sysroot)
 	dh_shlibdeps -l$(SDIR)/lib:$(SYSROOT)/lib:$(SYSROOT)/lib64/lp64d
 endef
 
 override_dh_auto_configure:
 	$(call configure_macro,riscv64-gcc,$(OPTS_GCC))
-	$(call configure_macro,riscv64-linux-gcc,$(OPTS_LINUX_GCC))
+	$(call configure_macro,riscv64-linux-glibc-gcc,$(OPTS_GLIBC_GCC))
+	$(call configure_macro,riscv64-linux-musl-gcc,$(OPTS_MUSL_GCC))
 
 override_dh_auto_build:
 	$(call build_macro,riscv64-gcc)
-	$(call build_macro,riscv64-linux-gcc)
+	$(call build_macro,riscv64-linux-glibc-gcc)
+	#$(#call build_macro,riscv64-linux-musl-gcc)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
 	$(call install_macro,riscv64-gcc)
-	$(call install_macro,riscv64-linux-gcc)
+	$(call install_macro,riscv64-linux-glibc-gcc)
+	#$(#call install_macro,riscv64-linux-musl-gcc)
 
 override_dh_strip:
 	dh_strip -X.a -X.o -X.so
 
 override_dh_shlibdeps:
-	$(call shlibdeps_macro,riscv64-linux-gcc)
+	#$(#call shlibdeps_macro,riscv64-linux-glibc-gcc,riscv64-unknown-linux-gnu)
+	#$(#call shlibdeps_macro,riscv64-linux-musl-gcc,riscv64-unknown-linux-musl)

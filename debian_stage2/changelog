@@ -1,3 +1,10 @@
+riscv64-gcc (12.0.1-rvv-3) stable; urgency=medium
+
+  * gcc-12.0.1
+  * Add linux musl toolchain
+
+ -- Katsuhiro Suzuki <katsuster@katsuster.net>  Fri, 27 Jan 2023 00:00:00 +0000
+
 riscv64-gcc (12.0.1-rvv-2) stable; urgency=medium
 
   * gcc-12.0.1
