@@ -4,42 +4,47 @@
 	PATH=$(PREFIX)/bin:$(PATH) \
 	    dh $@
 
-build_dir = build
-
-PREFIX = /opt/riscv
+BUILD_BASE = build
+PREFIX_BASE = /opt/riscv
 
 PWD := $(shell pwd)
 PKGVER := $(shell head -1 PKGVERSION)
 
+PROJ_LIST   ?= riscv64-gcc riscv64-linux-glibc-gcc riscv64-linux-musl-gcc
+TARGET_LIST ?= riscv64-unknown-elf riscv64-unknown-linux-gnu riscv64-unknown-linux-musl
+
 OPTS_GCC = \
-	--target=riscv64-unknown-elf \
 	--enable-multilib \
 	--disable-shared \
 	--disable-threads \
 	--with-native-system-header-dir=/include \
-	--with-newlib \
-	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
+	--with-newlib
 
 OPTS_GLIBC_GCC = \
-	--target=riscv64-unknown-linux-gnu \
 	--enable-multilib \
 	--enable-shared \
-	--enable-threads \
-	--with-sysroot=$(PREFIX)/sysroot
+	--enable-threads
 
 OPTS_MUSL_GCC = \
-	--target=riscv64-unknown-linux-musl \
 	--disable-multilib \
 	--enable-shared \
 	--enable-threads \
-	--with-sysroot=$(PREFIX)/sysroot
+	--with-headers=$(SYSROOT)/usr/include
+
+BUILD   = $(BUILD_BASE)_$(PROJ)
+PREFIX  = $(PREFIX_BASE)
+SYSROOT = $(PREFIX_BASE)/$(TARGET)/sysroot
+DEST    = $(PWD)/debian/$(PROJ)
+DESTPRE = $(DEST)/$(PREFIX)
+DESTSYS = $(DEST)/$(SYSROOT)
 
 define configure_macro
-	$(eval PROJ = $(1))
-	$(eval OPTS = $(2))
-	mkdir -p $(build_dir)_$(PROJ) && \
-	cd $(build_dir)_$(PROJ) && \
+	$(eval PROJ    = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET  = $(word $(1),$(TARGET_LIST)))
+	$(eval OPTS    = $(2))
+	mkdir -p $(BUILD) && cd $(BUILD) && \
 	../configure \
+	  --target=$(TARGET) \
 	  --prefix=$(PREFIX) \
 	  --infodir=$(PREFIX)/share/doc/$(PROJ)/info \
 	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
@@ -56,62 +61,62 @@ define configure_macro
 	  --enable-tls \
 	  --with-pkgversion="$(PKGVER)" \
 	  --with-python-dir=share/$(PROJ) \
+	  --with-sysroot=$(SYSROOT) \
 	  $(OPTS) \
 	  CFLAGS_FOR_TARGET="-O2 -mcmodel=medany" \
 	  CXXFLAGS_FOR_TARGET="-O2 -mcmodel=medany"
 endef
 
 define build_macro
-	$(eval PROJ = $(1))
-	dh_auto_build -B$(build_dir)_$(PROJ) --parallel all
+	$(eval PROJ    = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET  = $(word $(1),$(TARGET_LIST)))
+	dh_auto_build -B$(BUILD) --parallel all
 endef
 
 define install_macro
-	$(eval PROJ = $(1))
-	$(eval DEST = $(PWD)/debian/$(PROJ))
-	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(DEST) install
+	$(eval PROJ    = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET  = $(word $(1),$(TARGET_LIST)))
+	$(MAKE) -C $(BUILD) DESTDIR=$(DEST) install
 	# move libcc1.so
-	mkdir -p $(DEST)/$(PREFIX)/lib/gcc-cross/$(PROJ)/
-	mv $(DEST)/$(PREFIX)/lib/libcc1.* \
-	  $(DEST)/$(PREFIX)/lib/gcc-cross/$(PROJ)/
+	mkdir -p $(DESTPRE)/lib/gcc-cross/$(PROJ)/
+	mv $(DESTPRE)/lib/libcc1.* \
+	  $(DESTPRE)/lib/gcc-cross/$(PROJ)/
 	# remove *.la
 	find $(DEST)/ -name '*.la' -delete
 	# gcc-doc-base provides man7
 	# gcc-N-locales provides locales
 	rm -rf \
-	  $(DEST)/$(PREFIX)/share/man/man7 \
-	  $(DEST)/$(PREFIX)/share/locale
+	  $(DESTPRE)/share/man/man7 \
+	  $(DESTPRE)/share/locale
 endef
 
 define shlibdeps_macro
-	$(eval PROJ = $(1))
-	$(eval DEST = $(PWD)/debian/$(PROJ))
-	$(eval SDIR = $(DEST)/$(PREFIX)/$(2))
-	$(eval SYSROOT = $(PREFIX)/sysroot)
+	$(eval PROJ   = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET = $(word $(1),$(TARGET_LIST)))
 	dh_shlibdeps -l$(SDIR)/lib:$(SYSROOT)/lib:$(SYSROOT)/lib64/lp64d
 endef
 
 override_dh_auto_configure:
-	$(call configure_macro,riscv64-gcc,$(OPTS_GCC))
-	$(call configure_macro,riscv64-linux-glibc-gcc,$(OPTS_GLIBC_GCC))
-	$(call configure_macro,riscv64-linux-musl-gcc,$(OPTS_MUSL_GCC))
+	$(call configure_macro,1,$(OPTS_GCC))
+	$(call configure_macro,2,$(OPTS_GLIBC_GCC))
+	$(call configure_macro,3,$(OPTS_MUSL_GCC))
 
 override_dh_auto_build:
-	$(call build_macro,riscv64-gcc)
-	$(call build_macro,riscv64-linux-glibc-gcc)
-	#$(#call build_macro,riscv64-linux-musl-gcc)
+	$(call build_macro,1)
+	$(call build_macro,2)
+	$(call build_macro,3)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
-	$(call install_macro,riscv64-gcc)
-	$(call install_macro,riscv64-linux-glibc-gcc)
-	#$(#call install_macro,riscv64-linux-musl-gcc)
+	$(call install_macro,1)
+	$(call install_macro,2)
+	$(call install_macro,3)
 
 override_dh_strip:
 	dh_strip -X.a -X.o -X.so
 
 override_dh_shlibdeps:
-	#$(#call shlibdeps_macro,riscv64-linux-glibc-gcc,riscv64-unknown-linux-gnu)
-	#$(#call shlibdeps_macro,riscv64-linux-musl-gcc,riscv64-unknown-linux-musl)
+	#$(#call shlibdeps_macro,2)
+	#$(#call shlibdeps_macro,3)

@@ -4,31 +4,33 @@
 	PATH=$(PREFIX)/bin:$(PATH) \
 	    dh $@
 
-build_dir = build
-
-PREFIX = /opt/riscv
+BUILD_BASE = build
+PREFIX_BASE = /opt/riscv
 
 PWD := $(shell pwd)
 PKGVER := $(shell head -1 PKGVERSION)
 
-OPTS_GCC = \
-	--target=riscv64-unknown-elf \
-	--with-sysroot=$(PREFIX)/riscv64-unknown-elf
+PROJ_LIST   ?= riscv64-gcc-stage1 riscv64-linux-glibc-gcc-stage1 riscv64-linux-musl-gcc-stage1
+TARGET_LIST ?= riscv64-unknown-elf riscv64-unknown-linux-gnu riscv64-unknown-linux-musl
 
-OPTS_GLIBC_GCC = \
-	--target=riscv64-unknown-linux-gnu \
-	--with-sysroot=$(PREFIX)/sysroot
+OPTS_GCC =
+OPTS_GLIBC_GCC =
+OPTS_MUSL_GCC =
 
-OPTS_MUSL_GCC = \
-	--target=riscv64-unknown-linux-musl \
-	--with-sysroot=$(PREFIX)/sysroot
+BUILD   = $(BUILD_BASE)_$(PROJ)
+PREFIX  = $(PREFIX_BASE)
+SYSROOT = $(PREFIX_BASE)/$(TARGET)/sysroot
+DEST    = $(PWD)/debian/$(PROJ)
+DESTPRE = $(DEST)/$(PREFIX)
+DESTSYS = $(DEST)/$(SYSROOT)
 
 define configure_macro
-	$(eval PROJ = $(1))
-	$(eval OPTS = $(2))
-	mkdir -p $(build_dir)_$(PROJ) && \
-	cd $(build_dir)_$(PROJ) && \
+	$(eval PROJ    = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET  = $(word $(1),$(TARGET_LIST)))
+	$(eval OPTS    = $(2))
+	mkdir -p $(BUILD) && cd $(BUILD) && \
 	../configure \
+	  --target=$(TARGET) \
 	  --prefix=$(PREFIX) \
 	  --infodir=$(PREFIX)/share/doc/$(PROJ)/info \
 	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
@@ -47,6 +49,7 @@ define configure_macro
 	  --enable-tls \
 	  --with-newlib \
 	  --with-pkgversion="$(PKGVER)" \
+	  --with-sysroot=$(SYSROOT) \
 	  --with-system-zlib \
 	  $(OPTS) \
 	  CFLAGS_FOR_TARGET="-Os -mcmodel=medany" \
@@ -54,37 +57,39 @@ define configure_macro
 endef
 
 define build_macro
-	$(eval PROJ = $(1))
-	dh_auto_build -B$(build_dir)_$(PROJ) --parallel -- all-gcc
-	dh_auto_build -B$(build_dir)_$(PROJ) --parallel -- all-target-libgcc
+	$(eval PROJ   = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET = $(word $(1),$(TARGET_LIST)))
+	dh_auto_build -B$(BUILD) --parallel -- all-gcc
+	dh_auto_build -B$(BUILD) --parallel -- all-target-libgcc
 endef
 
 define install_macro
-	$(eval PROJ = $(1))
-	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(PWD)/debian/$(PROJ) install-gcc
-	$(MAKE) -C $(build_dir)_$(PROJ) DESTDIR=$(PWD)/debian/$(PROJ) install-target-libgcc
+	$(eval PROJ   = $(word $(1),$(PROJ_LIST)))
+	$(eval TARGET = $(word $(1),$(TARGET_LIST)))
+	$(MAKE) -C $(BUILD) DESTDIR=$(DEST) install-gcc
+	$(MAKE) -C $(BUILD) DESTDIR=$(DEST) install-target-libgcc
 	# gcc-doc-base provides man7
 	rm -rf \
-	  $(PWD)/debian/$(PROJ)/$(PREFIX)/share/man/man7
+	  $(DESTPRE)/share/man/man7
 endef
 
 override_dh_auto_configure:
-	$(call configure_macro,riscv64-gcc-stage1,$(OPTS_GCC))
-	$(call configure_macro,riscv64-linux-glibc-gcc-stage1,$(OPTS_GLIBC_GCC))
-	$(call configure_macro,riscv64-linux-musl-gcc-stage1,$(OPTS_MUSL_GCC))
+	$(call configure_macro,1,$(OPTS_GCC))
+	$(call configure_macro,2,$(OPTS_GLIBC_GCC))
+	$(call configure_macro,3,$(OPTS_MUSL_GCC))
 
 override_dh_auto_build:
-	$(call build_macro,riscv64-gcc-stage1)
-	$(call build_macro,riscv64-linux-glibc-gcc-stage1)
-	$(call build_macro,riscv64-linux-musl-gcc-stage1)
+	$(call build_macro,1)
+	$(call build_macro,2)
+	$(call build_macro,3)
 
 # Ignore tests
 override_dh_auto_test:
 
 override_dh_auto_install:
-	$(call install_macro,riscv64-gcc-stage1)
-	$(call install_macro,riscv64-linux-glibc-gcc-stage1)
-	$(call install_macro,riscv64-linux-musl-gcc-stage1)
+	$(call install_macro,1)
+	$(call install_macro,2)
+	$(call install_macro,3)
 
 override_dh_strip:
 	dh_strip -X.a -X.o
