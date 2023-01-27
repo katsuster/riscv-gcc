@@ -31,6 +31,8 @@ OPTS_MUSL_GCC = \
 	--enable-threads \
 	--with-headers=$(SYSROOT)/usr/include
 
+OPTS_LIST   ?= OPTS_GCC OPTS_GLIBC_GCC OPTS_MUSL_GCC
+
 BUILD   = $(BUILD_BASE)_$(PROJ)
 PREFIX  = $(PREFIX_BASE)
 SYSROOT = $(PREFIX_BASE)/$(TARGET)/sysroot
@@ -41,7 +43,7 @@ DESTSYS = $(DEST)/$(SYSROOT)
 define configure_macro
 	$(eval PROJ    = $(word $(1),$(PROJ_LIST)))
 	$(eval TARGET  = $(word $(1),$(TARGET_LIST)))
-	$(eval OPTS    = $(2))
+	$(eval OPTS    = $($(word $(1),$(OPTS_LIST))))
 	mkdir -p $(BUILD) && cd $(BUILD) && \
 	../configure \
 	  --target=$(TARGET) \
@@ -97,9 +99,9 @@ define shlibdeps_macro
 endef
 
 override_dh_auto_configure:
-	$(call configure_macro,1,$(OPTS_GCC))
-	$(call configure_macro,2,$(OPTS_GLIBC_GCC))
-	$(call configure_macro,3,$(OPTS_MUSL_GCC))
+	$(call configure_macro,1)
+	$(call configure_macro,2)
+	$(call configure_macro,3)
 
 override_dh_auto_build:
 	$(call build_macro,1)
