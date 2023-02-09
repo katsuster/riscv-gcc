@@ -52,7 +52,7 @@ define configure_macro
 	  --htmldir=$(PREFIX)/share/doc/$(PROJ)/html \
 	  --pdfdir=$(PREFIX)/share/doc/$(PROJ)/pdf \
 	  --enable-checking=yes \
-	  --enable-languages=c,c++ \
+	  --enable-languages=c,c++,fortran \
 	  --disable-libatomic \
 	  --disable-libgomp \
 	  --disable-libmudflap \
