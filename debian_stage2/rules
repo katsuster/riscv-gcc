@@ -14,6 +14,11 @@ PROJ_LIST   ?= riscv64-gcc riscv64-linux-glibc-gcc riscv64-linux-musl-gcc
 TARGET_LIST ?= riscv64-unknown-elf riscv64-unknown-linux-gnu riscv64-unknown-linux-musl
 
 OPTS_GCC = \
+	--disable-libatomic \
+	--disable-libgomp \
+	--disable-libmudflap \
+	--disable-libquadmath \
+	--disable-libssp \
 	--enable-multilib \
 	--disable-shared \
 	--disable-threads \
@@ -21,11 +26,21 @@ OPTS_GCC = \
 	--with-newlib
 
 OPTS_GLIBC_GCC = \
+	--enable-libatomic \
+	--enable-libgomp \
+	--enable-libmudflap \
+	--enable-libquadmath \
+	--enable-libssp \
 	--enable-multilib \
 	--enable-shared \
 	--enable-threads
 
 OPTS_MUSL_GCC = \
+	--enable-libatomic \
+	--enable-libgomp \
+	--enable-libmudflap \
+	--enable-libquadmath \
+	--enable-libssp \
 	--disable-multilib \
 	--enable-shared \
 	--enable-threads \
@@ -53,12 +68,7 @@ define configure_macro
 	  --pdfdir=$(PREFIX)/share/doc/$(PROJ)/pdf \
 	  --enable-checking=yes \
 	  --enable-languages=c,c++,fortran \
-	  --disable-libatomic \
-	  --disable-libgomp \
-	  --disable-libmudflap \
-	  --disable-libquadmath \
 	  --disable-libsanitizer \
-	  --disable-libssp \
 	  --enable-nls \
 	  --enable-tls \
 	  --with-pkgversion="$(PKGVER)" \
